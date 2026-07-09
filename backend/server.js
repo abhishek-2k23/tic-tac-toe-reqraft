@@ -11,22 +11,6 @@ let gameState = {
   isXNext: true,
 };
 
-ios.on('connection', (socket) => {
-  console.log('New client connected');
-  socket.emit('gameState', gameState);
-
-  socket.on('play', (index) => {
-    if (gameState.grid[index] || calculateWinner(gameState.grid)) return;
-    gameState.grid[index] = gameState.isXNext ? 'X' : 'O';
-    gameState.isXNext = !gameState.isXNext;
-    io.emit('gameState', gameState);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
 const calculateWinner = (squares) => {
   const lines = [
     [0, 1, 2],
@@ -46,5 +30,31 @@ const calculateWinner = (squares) => {
   }
   return null;
 };
+
+const checkForDraw = (squares) => squares.every(Boolean);
+
+io.on('connection', (socket) => {
+  console.log('New client connected');
+  socket.emit('gameState', gameState);
+
+  socket.on('play', (index) => {
+    if (gameState.grid[index] || calculateWinner(gameState.grid)) return;
+    gameState.grid[index] = gameState.isXNext ? 'X' : 'O';
+    gameState.isXNext = !gameState.isXNext;
+    const winner = calculateWinner(gameState.grid);
+    if (winner || checkForDraw(gameState.grid)) {
+      io.emit('gameEnd', { winner, isDraw: !winner });
+      gameState.grid = Array(9).fill(null);
+      gameState.isXNext = true;
+      io.emit('gameState', gameState);
+    } else {
+      io.emit('gameState', gameState);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
 
 server.listen(4000, () => console.log('Server running on http://localhost:4000'));

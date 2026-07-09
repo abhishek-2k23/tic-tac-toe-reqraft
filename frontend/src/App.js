@@ -1,46 +1,49 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client';
 import './App.css';
+
+const socket = io('http://localhost:4000');
 
 function App() {
   const [grid, setGrid] = useState(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState(true);
+  const [status, setStatus] = useState('Next player: X');
+
+  useEffect(() => {
+    socket.on('gameState', (gameState) => {
+      setGrid(gameState.grid);
+      setIsXNext(gameState.isXNext);
+      setStatus(
+        `Next player: ${gameState.isXNext ? 'X' : 'O'}`
+      );
+    });
+    socket.on('gameEnd', ({ winner, isDraw }) => {
+      setStatus(
+        winner
+          ? `Winner: ${winner}`
+          : isDraw
+          ? 'The game is a draw!'
+          : status
+      );
+      setTimeout(() => {
+        socket.emit('reset');
+      }, 2000); // 2-second delay before reset
+    });
+  }, []);
 
   const handleClick = (index) => {
-    if (grid[index] || calculateWinner(grid)) return;
-    const nextGrid = grid.slice();
-    nextGrid[index] = isXNext ? 'X' : 'O';
-    setGrid(nextGrid);
-    setIsXNext(!isXNext);
+    socket.emit('play', index);
   };
-
-  const calculateWinner = (squares) => {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
-    for (let i = 0; i < lines.length; i++) {
-      const [a, b, c] = lines[i];
-      if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a];
-      }
-    }
-    return null;
-  };
-
-  const winner = calculateWinner(grid);
-  const status = winner ? `Winner: ${winner}` : `Next player: ${isXNext ? 'X' : 'O'}`;
 
   return (
     <div className="game">
       <div className="game-board">
         {grid.map((value, index) => (
-          <button key={index} className="square" onClick={() => handleClick(index)}>
+          <button
+            key={index}
+            className="square"
+            onClick={() => handleClick(index)}
+          >
             {value}
           </button>
         ))}
