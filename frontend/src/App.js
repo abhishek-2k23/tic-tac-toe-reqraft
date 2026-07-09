@@ -13,9 +13,7 @@ function App() {
     socket.on('gameState', (gameState) => {
       setGrid(gameState.grid);
       setIsXNext(gameState.isXNext);
-      setStatus(
-        `Next player: ${gameState.isXNext ? 'X' : 'O'}`
-      );
+      setStatus(`Next player: ${gameState.isXNext ? 'X' : 'O'}`);
     });
     socket.on('gameEnd', ({ winner, isDraw }) => {
       setStatus(
@@ -28,6 +26,10 @@ function App() {
       setTimeout(() => {
         socket.emit('reset');
       }, 2000); // 2-second delay before reset
+    });
+    socket.on('reset', () => {
+      setGrid(Array(9).fill(null));
+      setStatus('Next player: X');
     });
   }, []);
 
